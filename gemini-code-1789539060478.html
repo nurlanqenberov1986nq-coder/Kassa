@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MegaComputers - Bulud İdarəetməsi</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    
+    <!-- Firebase SDK (v9 Compatibility Mode) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 8px; background-color: #f8fafc; color: #0f172a; font-size: 14px; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        .container { background-color: #ffffff; padding: 12px; border-radius: 8px; width: 100%; border: 1px solid #cbd5e1; }
+        .header-title { text-align: center; font-size: 22px; font-weight: 800; margin-bottom: 12px; }
+
+        .akt-tabs-container { display: flex; gap: 6px; margin-bottom: 10px; background: #e2e8f0; padding: 4px; border-radius: 6px; }
+        .akt-tab-wrapper { flex: 1; display: flex; align-items: center; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; }
+        .akt-tab-btn { flex: 1; padding: 8px; background: transparent; border: none; font-weight: bold; cursor: pointer; color: #334155; text-align: center; }
+        .akt-tab-wrapper.active { background: #0284c7; border-color: #0284c7; }
+        .akt-tab-wrapper.active .akt-tab-btn { color: #ffffff; }
+
+        .finance-dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; margin-bottom: 12px; background: #f1f5f9; padding: 8px; border-radius: 8px; }
+        .fin-card { background: #ffffff; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center; }
+        .fin-title { font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 4px; text-transform: uppercase; }
+        .fin-value { font-size: 16px; font-weight: 800; }
+        .fin-input { width: 90px; font-size: 15px; font-weight: bold; text-align: center; border: none; border-bottom: 2px solid #0284c7; }
+
+        .table-wrapper { width: 100%; overflow-x: auto; margin-bottom: 12px; max-height: 50vh; overflow-y: auto; border: 1px solid #cbd5e1; }
+        table { width: 100%; min-width: 100%; border-collapse: collapse; font-size: 13px; }
+        th, td { border: 1px solid #cbd5e1; padding: 6px; text-align: center; }
+        th { background: #e2e8f0; position: sticky; top: 0; z-index: 10; }
+
+        input, select { width: 100%; border: none; outline: none; background: transparent; text-align: center; font-weight: 600; }
+
+        .credit-wrapper { background: #fffbebf5; border: 1.5px solid #fcd34d; border-radius: 6px; padding: 8px; margin-bottom: 12px; }
+        .credit-table th { background: #fef3c7 !important; color: #92400e !important; }
+        
+        .credit-row-normal { background-color: #ffffff; }
+        .credit-row-warning { background-color: #fef08a !important; font-weight: bold; }
+        .credit-row-alert { background-color: #fca5a5 !important; color: #7f1d1d; font-weight: bold; }
+        .credit-row-paid { background-color: #dcfce7 !important; color: #166534; }
+
+        .status-gozleme { background-color: #fef08a; }
+        .status-temirde { background-color: #bae6fd; }
+        .status-hazirdir { background-color: #dcfce7; }
+        .status-imtina { background-color: #fee2e2; }
+        
+        #sync-status { text-align: center; font-size: 12px; font-weight: bold; margin-bottom: 8px; padding: 4px; border-radius: 4px; }
+        .sync-online { background-color: #dcfce7; color: #15803d; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-title">MegaComputers - Bulud Sistemi</div>
+    <div id="sync-status" class="sync-online">🟢 Bulud İnternetə Qoşulub ( Canlı Sinxron )</div>
+
+    <!-- TABS -->
+    <div class="akt-tabs-container">
+        <div class="akt-tab-wrapper active" id="tab-wrapper-1"><button class="akt-tab-btn" onclick="switchAkt(1)">📋 Servis 1</button></div>
+        <div class="akt-tab-wrapper" id="tab-wrapper-2"><button class="akt-tab-btn" onclick="switchAkt(2)">💳 Kredit və Şəxsi Xərclər (Servis 2)</button></div>
+        <div class="akt-tab-wrapper" id="tab-wrapper-3"><button class="akt-tab-btn" onclick="switchAkt(3)">📋 Servis 3</button></div>
+    </div>
+
+    <!-- MALİYYƏ PANELİ -->
+    <div class="finance-dashboard">
+        <div class="fin-card">
+            <div class="fin-title">İlkin Kassa</div>
+            <div class="fin-value"><input type="text" id="dash-ilkin-kassa" class="fin-input auto-sync" value="0.00"> AZN</div>
+        </div>
+        <div class="fin-card" id="card-temir-gelir">
+            <div class="fin-title">Xalis Gəlir</div>
+            <div class="fin-value" id="dash-temir-gelir" style="color: #0284c7;">0.00 AZN</div>
+        </div>
+        <div class="fin-card">
+            <div class="fin-title">Sabit Xərc</div>
+            <div class="fin-value"><input type="text" id="dash-sabit-xerc" class="fin-input auto-sync" value="0.00"> AZN</div>
+        </div>
+        <div class="fin-card">
+            <div class="fin-title">Çıxan Xərc/Kredit</div>
+            <div class="fin-value" id="dash-gundelik-xerc-sum" style="color: #dc2626;">0.00 AZN</div>
+        </div>
+        <div class="fin-card" style="border: 2px solid #16a34a; background: #f0fdf4;">
+            <div class="fin-title" style="color: #15803d;">QALAN KASSA</div>
+            <div class="fin-value" id="dash-qalan-pul" style="color: #16a34a;">0.00 AZN</div>
+        </div>
+    </div>
+
+    <!-- TƏMİR BÖLMƏSİ (SERVİS 1 VƏ 3) -->
+    <div id="repairSection">
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 35px;">№</th>
+                        <th style="width: 80px;">Tarix</th>
+                        <th>Müştəri</th>
+                        <th style="width: 100px;">Tel</th>
+                        <th>Cihaz</th>
+                        <th>Görülən İş</th>
+                        <th style="width: 70px;">Qiymət</th>
+                        <th style="width: 70px;">Xərc</th>
+                        <th style="width: 70px;">Endirim</th>
+                        <th style="width: 80px;">Xalis</th>
+                        <th style="width: 90px;">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ŞƏXSİ XƏRCLƏR VƏ KREDİTLƏR (YALNIZ SERVİS 2) -->
+    <div id="personalAndCreditSection" style="display: none;">
+        <div class="credit-wrapper">
+            <div style="font-weight:bold; color:#b45309; margin-bottom:6px;">💳 Aylıq Kreditlər və Ödənişlər</div>
+            <div class="table-wrapper">
+                <table class="credit-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 35px;">№</th>
+                            <th>Kredit Adı</th>
+                            <th style="width: 120px;">Məbləğ (AZN)</th>
+                            <th style="width: 140px;">Son Ödəniş Tarixi</th>
+                            <th style="width: 140px;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="creditTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="credit-wrapper" style="background:#fff1f2; border-color:#fecdd3;">
+            <div style="font-weight:bold; color:#9f1239; margin-bottom:6px;">💸 Şəxsi və Gündəlik Xərclər</div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 35px;">№</th>
+                            <th style="width: 120px;">Tarix</th>
+                            <th>Xərc Təfərrüatı</th>
+                            <th style="width: 130px;">Məbləğ (AZN)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="servis2ExpenseBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyAZtZl3k9Cgv9s3rcnxB4rrPRcxzX7WR5Q",
+        authDomain: "megacomputers-18025.firebaseapp.com",
+        databaseURL: "https://megacomputers-18025-default-rtdb.firebaseio.com",
+        projectId: "megacomputers-18025",
+        storageBucket: "megacomputers-18025.firebasestorage.app",
+        messagingSenderId: "357285641243",
+        appId: "1:357285641243:web:f8daf3284a20d20ae94cbe",
+        measurementId: "G-B5PT3S5DLH"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let currentAktId = 1;
+    const TOTAL_ROWS = 50;
+    const TOTAL_CREDITS = 15;
+    const TOTAL_EXPENSES = 20;
+
+    function buildTables() {
+        let h1 = '';
+        for (let i = 1; i <= TOTAL_ROWS; i++) {
+            h1 += `<tr id="row-${i}">
+                <td>${i}</td>
+                <td><input type="text" id="inp-tarix-${i}" class="auto-sync"></td>
+                <td><input type="text" id="inp-musteri-${i}" class="auto-sync"></td>
+                <td><input type="text" id="inp-tel-${i}" class="auto-sync"></td>
+                <td><input type="text" id="inp-model-${i}" class="auto-sync"></td>
+                <td><input type="text" id="inp-isler-${i}" class="auto-sync"></td>
+                <td><input type="text" id="inp-qiymet-${i}" class="auto-sync" value="0.00"></td>
+                <td><input type="text" id="inp-xerc-${i}" class="auto-sync" value="0.00"></td>
+                <td><input type="text" id="inp-endirim-${i}" class="auto-sync" value="0.00"></td>
+                <td id="row-netice-${i}">0.00</td>
+                <td>
+                    <select id="sel-status-${i}" class="auto-sync" onchange="updateStatusColor(this)">
+                        <option value="Gözləmədə">Gözləmədə</option>
+                        <option value="Təmirdə">Təmirdə</option>
+                        <option value="Hazırdır">Hazırdır</option>
+                        <option value="İmtina">İmtina</option>
+                    </select>
+                </td>
+            </tr>`;
+        }
+        document.getElementById('tableBody').innerHTML = h1;
+
+        let h2 = '';
+        for (let k = 1; k <= TOTAL_CREDITS; k++) {
+            h2 += `<tr id="credit-row-${k}">
+                <td>${k}</td>
+                <td><input type="text" id="crd-name-${k}" class="auto-sync"></td>
+                <td><input type="text" id="crd-amount-${k}" class="auto-sync" value="0.00"></td>
+                <td><input type="date" id="crd-date-${k}" class="auto-sync"></td>
+                <td>
+                    <select id="crd-status-${k}" class="auto-sync">
+                        <option value="Ödənilməyib">Ödənilməyib</option>
+                        <option value="Ödənildi">Ödənildi</option>
+                    </select>
+                </td>
+            </tr>`;
+        }
+        document.getElementById('creditTableBody').innerHTML = h2;
+
+        let h3 = '';
+        for (let m = 1; m <= TOTAL_EXPENSES; m++) {
+            h3 += `<tr>
+                <td>${m}</td>
+                <td><input type="text" id="s2-exp-tarix-${m}" class="auto-sync"></td>
+                <td><input type="text" id="s2-exp-detal-${m}" class="auto-sync"></td>
+                <td><input type="text" id="s2-exp-megleg-${m}" class="auto-sync" value="0.00"></td>
+            </tr>`;
+        }
+        document.getElementById('servis2ExpenseBody').innerHTML = h3;
+    }
+
+    function switchAkt(id) {
+        currentAktId = id;
+        for(let i=1; i<=3; i++) document.getElementById(`tab-wrapper-${i}`).classList.toggle('active', i === id);
+        document.getElementById('repairSection').style.display = id === 2 ? 'none' : 'block';
+        document.getElementById('personalAndCreditSection').style.display = id === 2 ? 'block' : 'none';
+        listenToFirebase();
+    }
+
+    function recalculate() {
+        let totNetice = 0;
+        if (currentAktId !== 2) {
+            for (let i = 1; i <= TOTAL_ROWS; i++) {
+                const st = document.getElementById(`sel-status-${i}`)?.value;
+                const q = parseFloat(document.getElementById(`inp-qiymet-${i}`)?.value) || 0;
+                const x = parseFloat(document.getElementById(`inp-xerc-${i}`)?.value) || 0;
+                const e = parseFloat(document.getElementById(`inp-endirim-${i}`)?.value) || 0;
+                let res = st === "Hazırdır" ? (q - x - e) : 0;
+                document.getElementById(`row-netice-${i}`).innerText = res.toFixed(2);
+                totNetice += res;
+            }
+        }
+
+        let totalExp = 0;
+        if (currentAktId === 2) {
+            for (let m = 1; m <= TOTAL_EXPENSES; m++) totalExp += parseFloat(document.getElementById(`s2-exp-megleg-${m}`)?.value) || 0;
+            for (let k = 1; k <= TOTAL_CREDITS; k++) {
+                if (document.getElementById(`crd-status-${k}`)?.value === "Ödənildi") {
+                    totalExp += parseFloat(document.getElementById(`crd-amount-${k}`)?.value) || 0;
+                }
+            }
+        }
+
+        const ilkin = parseFloat(document.getElementById('dash-ilkin-kassa').value) || 0;
+        const sabit = parseFloat(document.getElementById('dash-sabit-xerc').value) || 0;
+
+        document.getElementById('dash-temir-gelir').innerText = totNetice.toFixed(2) + " AZN";
+        document.getElementById('dash-gundelik-xerc-sum').innerText = totalExp.toFixed(2) + " AZN";
+        document.getElementById('dash-qalan-pul').innerText = ((ilkin + totNetice) - (sabit + totalExp)).toFixed(2) + " AZN";
+
+        checkCreditDates();
+    }
+
+    function checkCreditDates() {
+        if (currentAktId !== 2) return;
+        const today = new Date(); today.setHours(0,0,0,0);
+
+        for (let k = 1; k <= TOTAL_CREDITS; k++) {
+            const tr = document.getElementById(`credit-row-${k}`);
+            const dVal = document.getElementById(`crd-date-${k}`)?.value;
+            const stVal = document.getElementById(`crd-status-${k}`)?.value;
+            tr.className = '';
+
+            if (stVal === "Ödənildi") tr.classList.add('credit-row-paid');
+            else if (dVal) {
+                const diff = Math.ceil((new Date(dVal) - today) / (1000 * 60 * 60 * 24));
+                if (diff <= 0) tr.classList.add('credit-row-alert');
+                else if (diff <= 3) tr.classList.add('credit-row-warning');
+            }
+        }
+    }
+
+    function updateStatusColor(el) {
+        el.className = 'auto-sync status-' + (el.value === 'Hazırdır' ? 'hazirdir' : el.value === 'Təmirdə' ? 'temirde' : el.value === 'İmtina' ? 'imtina' : 'gozleme');
+    }
+
+    function saveToFirebase() {
+        const data = {};
+        document.querySelectorAll('.auto-sync').forEach(el => { if(el.id) data[el.id] = el.value; });
+        db.ref('akt_' + currentAktId).set(data);
+    }
+
+    function listenToFirebase() {
+        db.ref('akt_' + currentAktId).on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                Object.keys(data).forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el && el !== document.activeElement) {
+                        el.value = data[id];
+                        if (el.tagName === 'SELECT') updateStatusColor(el);
+                    }
+                });
+                recalculate();
+            }
+        });
+    }
+
+    window.onload = function() {
+        buildTables();
+        switchAkt(1);
+
+        document.querySelector('.container').addEventListener('input', () => {
+            recalculate();
+            saveToFirebase();
+        });
+    }
+</script>
+</body>
+</html>
