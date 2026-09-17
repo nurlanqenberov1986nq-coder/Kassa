@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MegaComputers - İdarəetmə Paneli</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 8px; background-color: #f8fafc; color: #0f172a; font-size: 13px; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        .container { background-color: #ffffff; padding: 12px; border-radius: 8px; width: 100%; border: 1px solid #cbd5e1; }
+        .header-title { text-align: center; font-size: 20px; font-weight: 800; margin-bottom: 8px; color: #0f172a; }
+
+        .role-switch-container { display: flex; justify-content: center; gap: 8px; margin-bottom: 12px; background: #e2e8f0; padding: 6px; border-radius: 8px; position: relative; flex-wrap: wrap; }
+        .role-btn { flex: 1; max-width: 180px; padding: 10px; border: 1px solid #cbd5e1; background: #ffffff; font-weight: bold; border-radius: 6px; cursor: pointer; text-align: center; font-size: 13px; position: relative; }
+        .role-btn.active-role { background: #0284c7; color: white; border-color: #0284c7; }
+        .role-btn.admin-role { background: #0f172a; color: white; border-color: #0f172a; }
+
+        .btn-pass-change { background: #475569; color: white; border: none; padding: 0 12px; border-radius: 6px; font-weight: bold; cursor: pointer; display: none; align-items: center; justify-content: center; font-size: 14px; }
+        .btn-reset-db { background: #dc2626; color: white; border: none; padding: 0 12px; border-radius: 6px; font-weight: bold; cursor: pointer; display: none; align-items: center; justify-content: center; font-size: 12px; }
+        .btn-auto-select { background: #16a34a; color: white; border: none; padding: 10px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 13px; }
+
+        .notification-badge { position: absolute; top: -6px; right: -6px; background: #ef4444; color: white; font-weight: bold; border-radius: 12px; padding: 2px 8px; font-size: 11px; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }
+
+        .akt-tabs-container { display: flex; gap: 6px; margin-bottom: 10px; background: #e2e8f0; padding: 4px; border-radius: 6px; }
+        .akt-tab-wrapper { flex: 1; display: flex; align-items: center; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; }
+        .akt-tab-btn { flex: 1; padding: 8px; background: transparent; border: none; font-weight: bold; cursor: pointer; color: #334155; text-align: center; }
+        .akt-tab-wrapper.active { background: #0f172a; border-color: #0f172a; }
+        .akt-tab-wrapper.active .akt-tab-btn { color: #ffffff; }
+
+        /* MODAL PANELİ */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-box { background: white; padding: 20px; border-radius: 8px; width: 320px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .modal-title { font-size: 15px; font-weight: bold; color: #0f172a; margin-bottom: 12px; text-align: center; }
+        .modal-input { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px; outline: none; background: #f8fafc; }
+        .modal-btns { display: flex; gap: 8px; margin-top: 5px; }
+        .btn-modal-save { flex: 1; background: #16a34a; color: white; border: none; padding: 8px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .btn-modal-cancel { flex: 1; background: #94a3b8; color: white; border: none; padding: 8px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+
+        /* KASSA PANELİ */
+        .finance-dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 12px; background: #f1f5f9; padding: 8px; border-radius: 8px; }
+        .fin-card { background: #ffffff; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center; }
+        .fin-title { font-size: 10px; font-weight: 700; color: #64748b; margin-bottom: 4px; text-transform: uppercase; }
+        .fin-value { font-size: 14px; font-weight: 800; }
+
+        .reception-box { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+        .reception-title { font-weight: 800; font-size: 13px; color: #0369a1; margin-bottom: 8px; text-transform: uppercase; }
+        .reception-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
+        .reception-grid input { border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px; font-size: 12px; background: #ffffff; width: 100%; outline: none; }
+        .reception-btn { background: #0284c7; color: white; border: none; padding: 10px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+
+        .search-container { margin-bottom: 10px; }
+        .search-input { width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; text-align: left; background-color: #ffffff; outline: none; }
+        
+        .table-wrapper { width: 100%; overflow-x: auto; margin-bottom: 12px; max-height: 55vh; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 4px; }
+        table { width: 100%; min-width: 100%; border-collapse: collapse; font-size: 12px; }
+        th, td { border: 1px solid #cbd5e1; padding: 6px; text-align: center; }
+        th { background: #e2e8f0; position: sticky; top: 0; z-index: 10; font-weight: 700; color: #1e293b; }
+
+        input, select { width: 100%; border: none; outline: none; background: transparent; text-align: center; font-weight: 600; font-size: 12px; }
+
+        .btn-add-row { display: block; width: 100%; padding: 8px; background: #0284c7; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-bottom: 12px; text-align: center; }
+
+        .credit-wrapper { background: #fffbebf5; border: 1.5px solid #fcd34d; border-radius: 6px; padding: 8px; margin-bottom: 12px; }
+        .optovoy-wrapper { background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 6px; padding: 8px; margin-bottom: 12px; }
+
+        /* YENİ XÜSUSİ RƏNGLƏR (AĞ RƏNGLƏR ƏVƏZ OLUNDU) */
+        .new-device-row { background-color: #fef08a !important; animation: glow 2s infinite alternate; }
+        @keyframes glow { from { background-color: #fef08a; } to { background-color: #fde047; } }
+
+        /* TƏMİR STATUS RƏNGLƏRİ */
+        tr.row-status-Gözləmədə { background-color: #fef9c3 !important; }
+        select.status-Gözləmədə { background-color: #fde047; color: #854d0e; font-weight: bold; }
+
+        tr.row-status-Təmirdə { background-color: #e0f2fe !important; }
+        select.status-Təmirdə { background-color: #38bdf8; color: #0369a1; font-weight: bold; }
+
+        tr.row-status-Hazırdır { background-color: #dcfce7 !important; }
+        select.status-Hazırdır { background-color: #22c55e; color: #ffffff; font-weight: bold; }
+
+        tr.row-status-Təhvil-verildi { background-color: #f1f5f9 !important; color: #475569; }
+        select.status-Təhvil-verildi { background-color: #64748b; color: #ffffff; font-weight: bold; }
+
+        tr.row-status-İmtina { background-color: #fee2e2 !important; color: #991b1b; }
+        select.status-İmtina { background-color: #ef4444; color: #ffffff; font-weight: bold; }
+
+        /* OPTOVOY ALIŞ RƏNGLƏRİ */
+        tr.opt-odenilmeyib { background-color: #ffedd5 !important; }
+        select.opt-status-Ödənilməyib { background-color: #f97316; color: #ffffff; font-weight: bold; }
+
+        tr.opt-odenildi { background-color: #d1fae5 !important; }
+        select.opt-status-Ödənildi { background-color: #10b981; color: #ffffff; font-weight: bold; }
+
+        /* KREDİT XƏBƏRDARLIQ RƏNGLƏRİ */
+        tr.credit-ok { background-color: #ecfdf5 !important; }
+        tr.credit-warning { background-color: #fef3c7 !important; border-left: 5px solid #f59e0b; }
+        tr.credit-expired { background-color: #ffe4e6 !important; border-left: 5px solid #e11d48; }
+        
+        .badge-warning { background: #f97316; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; }
+        .badge-expired { background: #dc2626; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; animation: pulse 1s infinite; }
+
+        .hide-for-reception { display: none !important; }
+        .admin-only-tab { display: none; }
+        .admin-only-card { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-title">MegaComputers - İdarəetmə Paneli</div>
+
+    <!-- ROL SEÇİMİ -->
+    <div class="role-switch-container">
+        <button id="btn-role-reception" class="role-btn active-role" onclick="switchRole('reception')">🛎️ Resepşn (Qəbul)</button>
+        <button id="btn-role-master" class="role-btn" onclick="switchRole('master')">
+            🔧 Servis (Usta)
+            <span id="notifBadge" class="notification-badge" style="display: none;">0 YENİ</span>
+        </button>
+        <button id="btn-role-admin" class="role-btn" onclick="switchRole('admin')">
+            👑 Admin (Sahib)
+            <span id="creditAlertBadge" class="notification-badge" style="display: none; background: #dc2626;">0 KREDİT</span>
+        </button>
+        <button id="btnPassChange" class="btn-pass-change" title="Admin Şifrəsini Dəyiş" onclick="openPassModal()">⚙️ Şifrə</button>
+        <button id="btnResetDB" class="btn-reset-db" title="Bütün Sistem Bazasını Sıfırla" onclick="resetEntireDatabase()">🗑️ Bazanı Sıfırla</button>
+        <button id="btnAutoSelect" class="btn-auto-select" style="display: none;" onclick="autoSelectWork()">⚡ Avto-Seçim</button>
+    </div>
+
+    <!-- ŞİFRƏ DƏYİŞMƏ MODALI -->
+    <div id="passModal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-title">🔐 Admin Şifrəsini Dəyiş</div>
+            <input type="password" id="modal-old-pass" class="modal-input" placeholder="Cari Şifrə">
+            <input type="password" id="modal-new-pass" class="modal-input" placeholder="Yeni Şifrə">
+            <input type="password" id="modal-confirm-pass" class="modal-input" placeholder="Yeni Şifrə (Təkrar)">
+            <div class="modal-btns">
+                <button class="btn-modal-save" onclick="saveNewPassword()">Yadda Saxla</button>
+                <button class="btn-modal-cancel" onclick="closePassModal()">Ləğv Et</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="akt-tabs-container">
+        <div class="akt-tab-wrapper active" id="tab-wrapper-1"><button class="akt-tab-btn" onclick="switchAkt(1)">📋 Qəbul və Təmir Uçotu</button></div>
+        <div class="akt-tab-wrapper admin-only-tab" id="tab-wrapper-2"><button class="akt-tab-btn" onclick="switchAkt(2)">💳 Kredit və Xərclər (Admin)</button></div>
+        <div class="akt-tab-wrapper admin-only-tab" id="tab-wrapper-3"><button class="akt-tab-btn" onclick="switchAkt(3)">📦 Optovoy Alış / Anbar (Admin)</button></div>
+    </div>
+
+    <!-- KASSA PANELİ -->
+    <div class="finance-dashboard" id="financeDashboard">
+        <div class="fin-card" style="border-left: 4px solid #0284c7;">
+            <div class="fin-title">Günlük Gəlir</div>
+            <div class="fin-value" id="dash-today-gelir" style="color: #0284c7;">0.00 AZN</div>
+        </div>
+        <div class="fin-card hide-for-reception" id="card-today-xerc" style="border-left: 4px solid #dc2626;">
+            <div class="fin-title">Günlük Xərc</div>
+            <div class="fin-value" id="dash-today-xerc" style="color: #dc2626;">0.00 AZN</div>
+        </div>
+        <div class="fin-card hide-for-reception" id="card-today-net" style="border-left: 4px solid #16a34a; background: #f0fdf4;">
+            <div class="fin-title" style="color: #15803d;">GÜNLÜK NET KASSA</div>
+            <div class="fin-value" id="dash-today-net" style="color: #16a34a;">0.00 AZN</div>
+        </div>
+        <div class="fin-card admin-only-card" id="card-optovoy-paid" style="border-left: 4px solid #10b981;">
+            <div class="fin-title">OPTOVOYA ÖDƏNİLƏN</div>
+            <div class="fin-value" id="dash-optovoy-paid" style="color: #059669;">0.00 AZN</div>
+        </div>
+        <div class="fin-card admin-only-card" id="card-optovoy-debt" style="border-left: 4px solid #f59e0b; background: #fffbebf5;">
+            <div class="fin-title" style="color: #b45309;">OPTOVOY BORCLAR (ÜMUMİ)</div>
+            <div class="fin-value" id="dash-optovoy-debt" style="color: #d97706;">0.00 AZN</div>
+        </div>
+        <div class="fin-card admin-only-card" id="card-main-kassa" style="background: #f8fafc; border: 2px dashed #64748b;">
+            <div class="fin-title">ƏSAS KASSA (ÜMUMİ NET)</div>
+            <div class="fin-value" id="dash-total-main-kassa" style="color: #0f172a;">0.00 AZN</div>
+        </div>
+    </div>
+
+    <datalist id="laptopBrandsDatalist">
+        <option value="ASUS"><option value="Acer"><option value="Lenovo"><option value="HP"><option value="Dell"><option value="MSI"><option value="Apple MacBook">
+    </datalist>
+    <datalist id="optovoyDatalist"></datalist>
+    <datalist id="repairClientsDatalist"></datalist>
+    <datalist id="creditNamesDatalist">
+        <option value="Birbank - Kapital Bank"><option value="Tamkart - ABB"><option value="Bolkart - Bank of Baku">
+        <option value="Unibank - Albalı Card"><option value="Trendyol Kredit"><option value="Kontakt Home">
+        <option value="Irshad Electronics"><option value="Baku Electronics"><option value="Soliton">
+    </datalist>
+
+    <!-- TƏMİR VƏ QƏBUL BÖLMƏSİ -->
+    <div id="repairSection">
+        <div class="reception-box" id="receptionFormBox">
+            <div class="reception-title">📝 Yeni Kompüter Qəbulu (Resepşn)</div>
+            <div class="reception-grid">
+                <input type="text" id="rec-musteri" placeholder="Müştəri Adı Soyadı">
+                <input type="text" id="rec-tel" placeholder="Əlaqə Nömrəsi">
+                <input type="text" id="rec-model" list="laptopBrandsDatalist" placeholder="Marka və Model">
+                <input type="text" id="rec-sikayet" placeholder="Şikayət / Problem">
+                <input type="text" id="rec-qiymet" placeholder="Məbləğ (AZN)" value="0.00">
+                <button class="reception-btn" onclick="submitReception()">📥 Qəbul Et və Sisteme Yaz</button>
+            </div>
+        </div>
+
+        <div class="search-container">
+            <input type="text" id="searchInput" class="search-input" placeholder="🔍 Müştəri, Telefon, Kompüter və ya Şikayətlə axtar..." onkeyup="filterRows()">
+        </div>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 35px;">№</th>
+                        <th style="width: 90px;">Qəbul Tarixi</th>
+                        <th style="width: 120px;">Müştəri Adı</th>
+                        <th style="width: 100px;">Telefon</th>
+                        <th style="width: 130px;">Marka/Model</th>
+                        <th>Şikayət</th>
+                        <th style="width: 80px;">Məbləğ</th>
+                        <th style="width: 160px;">Görülən İş (Əl ilə / Optovoy)</th>
+                        <th style="width: 150px;" class="col-xerc">Optovoy / Detal (Avto)</th>
+                        <th style="width: 70px;" class="col-xalis">Xalis</th>
+                        <th style="width: 110px;">Status</th>
+                        <th style="width: 95px;">Təhvil Tarixi</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+        <button class="btn-add-row" onclick="addNewRepairRow()">➕ Yeni Boş Sətir Əlavə Et</button>
+    </div>
+
+    <!-- OPTOVOY ALIŞ VƏ ANBAR (YALNIZ ADMİN) -->
+    <div id="optovoySection" style="display: none;">
+        <div class="optovoy-wrapper">
+            <div style="font-weight:bold; color:#15803d; margin-bottom:6px;">📦 Optovoy Satıcılardan Alınan Mallar və Anbar Uçotu</div>
+            <div class="table-wrapper">
+                <table class="optovoy-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 35px;">№</th>
+                            <th style="width: 100px;">Tarix</th>
+                            <th style="width: 140px;">Optovoy / Satıcı Adı</th>
+                            <th>Malın / Detalın Adı</th>
+                            <th style="width: 60px;">Stok Sayı</th>
+                            <th style="width: 80px;">Vahid Qiyməti</th>
+                            <th style="width: 90px;">Cəmi Məbləğ</th>
+                            <th style="width: 200px; background: #bbf7d0; color: #065f46;">💻 İstifadə Olunduğu Kompüter / Müştəri</th>
+                            <th style="width: 110px;">Ödəniş Statusu</th>
+                        </tr>
+                    </thead>
+                    <tbody id="optovoyTableBody"></tbody>
+                </table>
+            </div>
+            <button class="btn-add-row" style="background:#16a34a;" onclick="addNewOptovoyRow()">➕ Yeni Optovoy Mal Əlavə Et</button>
+
+            <!-- HƏR OPTOVOYÇUYA OLAN BORCLARIN XÜLASƏSİ -->
+            <div style="margin-top: 15px; background: #ffffff; padding: 10px; border-radius: 6px; border: 1px solid #86efac;">
+                <div style="font-weight: bold; color: #065f46; margin-bottom: 6px;">🤝 Satıcılar üzrə Borc Hesabatı (Kimə nə qədər borcluyuq)</div>
+                <div class="table-wrapper" style="max-height: 200px; margin-bottom:0;">
+                    <table>
+                        <thead>
+                            <tr style="background:#dcfce7;">
+                                <th>Optovoy / Satıcı Adı</th>
+                                <th>Ödənilən Məbləğ</th>
+                                <th>Qalan Borc Məbləği</th>
+                            </tr>
+                        </thead>
+                        <tbody id="supplierDebtTableBody">
+                            <tr><td colspan="3" style="color:#64748b;">Məlumat yoxdur</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KREDİT VƏ ŞƏXSİ XƏRCLƏR (YALNIZ ADMİN) -->
+    <div id="personalAndCreditSection" style="display: none;">
+        <!-- KREDİT XÜLASƏ PANELDİR -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 12px;">
+            <div class="fin-card" style="border-left: 4px solid #d97706; background: #fffbebf5;">
+                <div class="fin-title" style="color: #b45309;">ÜMUMİ QALAN KREDİT BORCU</div>
+                <div class="fin-value" id="credit-total-remaining" style="color: #d97706;">0.00 AZN</div>
+            </div>
+            <div class="fin-card" style="border-left: 4px solid #0284c7; background: #f0f9ff;">
+                <div class="fin-title" style="color: #0369a1;">AYLIQ ÖDƏNİŞ CƏMİ</div>
+                <div class="fin-value" id="credit-monthly-total" style="color: #0284c7;">0.00 AZN</div>
+            </div>
+        </div>
+
+        <div class="credit-wrapper">
+            <div style="font-weight:bold; color:#b45309; margin-bottom:6px;">💳 Aylıq Kreditlər, Faizlər və Ödəniş Hesabatı</div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 35px;">№</th>
+                            <th>Kredit / Təşkilat Adı</th>
+                            <th style="width: 100px;">Ümumi Borc</th>
+                            <th style="width: 70px;">İllik %</th>
+                            <th style="width: 70px;">Müddət (Ay)</th>
+                            <th style="width: 100px;">Aylıq Ödəniş</th>
+                            <th style="width: 100px;">Qalan Borc</th>
+                            <th style="width: 110px;">Son Ödəniş Tarixi</th>
+                            <th style="width: 130px;">Xəbərdarlıq</th>
+                            <th style="width: 110px;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="creditTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="credit-wrapper" style="background:#fff1f2; border-color:#fecdd3;">
+            <div style="font-weight:bold; color:#9f1239; margin-bottom:6px;">💸 Şəxsi və Gündəlik Xərclər (Kasadan Çıxılır)</div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 35px;">№</th>
+                            <th style="width: 130px;">Tarix</th>
+                            <th>Xərc Təfərrüatı</th>
+                            <th style="width: 130px;">Məbləğ (AZN)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="servis2ExpenseBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyAZtZl3k9Cgv9s3rcnxB4rrPRcxzX7WR5Q",
+        authDomain: "megacomputers-18025.firebaseapp.com",
+        databaseURL: "https://megacomputers-18025-default-rtdb.firebaseio.com",
+        projectId: "megacomputers-18025",
+        storageBucket: "megacomputers-18025.firebasestorage.app",
+        messagingSenderId: "357285641243",
+        appId: "1:357285641243:web:f8daf3284a20d20ae94cbe",
+        measurementId: "G-B5PT3S5DLH"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let currentRole = 'reception'; 
+    let currentAktId = 1;
+    let currentRowCount = 20;
+    let currentOptRowCount = 15;
+    const TOTAL_CREDITS = 15;
+    const TOTAL_EXPENSES = 20;
+    let currentAdminPassword = "1234"; 
+
+    db.ref('system_settings/admin_password').on('value', (snapshot) => {
+        const pass = snapshot.val();
+        if (pass) currentAdminPassword = pass;
+    });
+
+    function getTodayISO() {
+        const today = new Date();
+        return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    }
+
+    function createRepairRowHTML(i) {
+        return `<tr id="row-${i}" class="row-status-Gözləmədə">
+            <td>${i}</td>
+            <td><input type="date" id="inp-tarix-${i}" class="auto-sync" value=""></td>
+            <td><input type="text" id="inp-musteri-${i}" class="auto-sync" placeholder="" oninput="updateRepairClientsDatalist()"></td>
+            <td><input type="text" id="inp-tel-${i}" class="auto-sync" placeholder=""></td>
+            <td><input type="text" id="inp-model-${i}" class="auto-sync" list="laptopBrandsDatalist" placeholder="" oninput="updateRepairClientsDatalist()"></td>
+            <td><input type="text" id="inp-sikayet-${i}" class="auto-sync" placeholder=""></td>
+            <td><input type="text" id="inp-qiymet-${i}" class="auto-sync" value="0.00" oninput="recalculate()"></td>
+            <td>
+                <input type="text" id="inp-isler-${i}" class="auto-sync" list="optovoyDatalist" 
+                    ondblclick="showDropdown(this)" 
+                    oninput="handleWorkSelect(this, ${i}); markAsRead(${i});" 
+                    onchange="handleWorkSelect(this, ${i}); markAsRead(${i});" 
+                    placeholder="Görülən iş və ya detal">
+            </td>
+            <td class="col-xerc"><input type="text" id="inp-xerc-${i}" class="auto-sync" list="optovoyDatalist" onchange="handleOptovoySelect(this, ${i}); markAsRead(${i});" placeholder="0.00"></td>
+            <td id="row-netice-${i}" class="col-xalis">0.00</td>
+            <td>
+                <select id="sel-status-${i}" class="auto-sync status-Gözləmədə" onchange="handleStatusChange(this, ${i}); recalculate(); markAsRead(${i});">
+                    <option value="Gözləmədə">Gözləmədə</option>
+                    <option value="Təmirdə" id="opt-temirde-${i}">Təmirdə</option>
+                    <option value="Hazırdır" id="opt-hazirdir-${i}">Hazırdır</option>
+                    <option value="Təhvil verildi" id="opt-tehvil-${i}">Təhvil verildi</option>
+                    <option value="İmtina">İmtina</option>
+                </select>
+            </td>
+            <td><input type="date" id="inp-tehvil-tarix-${i}" class="auto-sync" onchange="recalculate()"></td>
+            <input type="hidden" id="inp-isnew-${i}" class="auto-sync" value="0">
+        </tr>`;
+    }
+
+    function showDropdown(input) {
+        input.value = '';
+    }
+
+    function createOptovoyRowHTML(p) {
+        return `<tr id="opt-row-${p}" class="opt-odenilmeyib">
+            <td>${p}</td>
+            <td><input type="date" id="opt-tarix-${p}" class="auto-sync" value=""></td>
+            <td><input type="text" id="opt-seller-${p}" class="auto-sync" placeholder="" oninput="recalculate(); updateOptovoyDatalist();"></td>
+            <td><input type="text" id="opt-name-${p}" class="auto-sync" placeholder="" oninput="updateOptovoyDatalist()"></td>
+            <td><input type="number" id="opt-qty-${p}" class="auto-sync" value="0" oninput="calcOptRow(${p})"></td>
+            <td><input type="text" id="opt-price-${p}" class="auto-sync" value="0.00" oninput="calcOptRow(${p})"></td>
+            <td id="opt-total-${p}" style="font-weight:bold;">0.00</td>
+            <td style="background: #f0fdf4;">
+                <input type="text" id="opt-used-${p}" class="auto-sync" list="repairClientsDatalist" 
+                    ondblclick="showDropdown(this)" 
+                    placeholder="Seçin və ya Əl ilə yazın" 
+                    style="font-weight:bold; color:#0369a1; text-align:center;">
+            </td>
+            <td>
+                <select id="opt-status-${p}" class="auto-sync opt-status-Ödənilməyib" onchange="updateOptStatusColor(this); recalculate();">
+                    <option value="Ödənilməyib">Ödənilməyib</option>
+                    <option value="Ödənildi">Ödənildi</option>
+                </select>
+            </td>
+        </tr>`;
+    }
+
+    function buildTables() {
+        let h1 = '';
+        for (let i = 1; i <= currentRowCount; i++) h1 += createRepairRowHTML(i);
+        document.getElementById('tableBody').innerHTML = h1;
+
+        let h4 = '';
+        for (let p = 1; p <= currentOptRowCount; p++) h4 += createOptovoyRowHTML(p);
+        document.getElementById('optovoyTableBody').innerHTML = h4;
+
+        let h2 = '';
+        for (let k = 1; k <= TOTAL_CREDITS; k++) {
+            h2 += `<tr id="credit-row-${k}" class="credit-ok">
+                <td>${k}</td>
+                <td><input type="text" id="crd-name-${k}" class="auto-sync" list="creditNamesDatalist" placeholder="Məs: Birbank"></td>
+                <td><input type="text" id="crd-amount-${k}" class="auto-sync" value="0.00" oninput="calcCreditRow(${k})"></td>
+                <td><input type="text" id="crd-rate-${k}" class="auto-sync" value="0" oninput="calcCreditRow(${k})"></td>
+                <td><input type="number" id="crd-months-${k}" class="auto-sync" value="12" oninput="calcCreditRow(${k})"></td>
+                <td><input type="text" id="crd-monthly-${k}" class="auto-sync" value="0.00" oninput="recalculate()"></td>
+                <td id="crd-remaining-${k}" style="font-weight:bold; color:#b45309;">0.00</td>
+                <td><input type="date" id="crd-date-${k}" class="auto-sync" onchange="checkCreditDates()"></td>
+                <td id="crd-alert-${k}">-</td>
+                <td>
+                    <select id="crd-status-${k}" class="auto-sync" onchange="checkCreditDates(); calcCreditRow(${k}); recalculate();">
+                        <option value="Ödənilməyib">Ödənilməyib</option>
+                        <option value="Ödənildi">Ödənildi</option>
+                    </select>
+                </td>
+            </tr>`;
+        }
+        document.getElementById('creditTableBody').innerHTML = h2;
+
+        let h3 = '';
+        for (let m = 1; m <= TOTAL_EXPENSES; m++) {
+            h3 += `<tr>
+                <td>${m}</td>
+                <td><input type="date" id="s2-exp-tarix-${m}" class="auto-sync" value="" onchange="recalculate()"></td>
+                <td><input type="text" id="s2-exp-detal-${m}" class="auto-sync"></td>
+                <td><input type="text" id="s2-exp-megleg-${m}" class="auto-sync" value="0.00" oninput="recalculate()"></td>
+            </tr>`;
+        }
+        document.getElementById('servis2ExpenseBody').innerHTML = h3;
+    }
+
+    function handleWorkSelect(input, rowIdx) {
+        const val = input.value;
+        if (val.includes(" - Price: ")) {
+            const parts = val.split(" - Price: ");
+            const name = parts[0];
+            const price = parseFloat(parts[1]).toFixed(2);
+            
+            input.value = name;
+            const xercInp = document.getElementById(`inp-xerc-${rowIdx}`);
+            if (xercInp) {
+                xercInp.value = price;
+            }
+            linkOptovoyToClient(name, rowIdx);
+        }
+        recalculate();
+        saveToFirebase();
+    }
+
+    function handleOptovoySelect(input, rowIdx) {
+        const val = input.value;
+        if (val.includes(" - Price: ")) {
+            const parts = val.split(" - Price: ");
+            const name = parts[0];
+            const price = parseFloat(parts[1]).toFixed(2);
+            input.value = price;
+            linkOptovoyToClient(name, rowIdx);
+        }
+        recalculate();
+        saveToFirebase();
+    }
+
+    function linkOptovoyToClient(detalName, rowIdx) {
+        const mus = document.getElementById(`inp-musteri-${rowIdx}`)?.value.trim() || '';
+        const model = document.getElementById(`inp-model-${rowIdx}`)?.value.trim() || '';
+        let clientInfo = `${mus} (${model})`.trim();
+        if (clientInfo === "()") clientInfo = `Sətir #${rowIdx} Müştərisi`;
+
+        for (let p = 1; p <= currentOptRowCount; p++) {
+            const optName = document.getElementById(`opt-name-${p}`)?.value.trim();
+            if (optName && optName === detalName) {
+                const usedInp = document.getElementById(`opt-used-${p}`);
+                if (usedInp) {
+                    usedInp.value = clientInfo;
+                }
+            }
+        }
+    }
+
+    function updateOptovoyDatalist() {
+        let options = '';
+        for (let p = 1; p <= currentOptRowCount; p++) {
+            const name = document.getElementById(`opt-name-${p}`)?.value.trim();
+            const price = document.getElementById(`opt-price-${p}`)?.value.trim() || "0.00";
+            if (name) {
+                options += `<option value="${name} - Price: ${price}">${name} (${price} AZN)</option>`;
+            }
+        }
+        document.getElementById('optovoyDatalist').innerHTML = options;
+    }
+
+    function updateRepairClientsDatalist() {
+        let options = '';
+        for (let i = 1; i <= currentRowCount; i++) {
+            const mus = document.getElementById(`inp-musteri-${i}`)?.value.trim();
+            const model = document.getElementById(`inp-model-${i}`)?.value.trim();
+            if (mus || model) {
+                options += `<option value="${mus} (${model})">Sətir #${i}: ${mus} - ${model}</option>`;
+            }
+        }
+        document.getElementById('repairClientsDatalist').innerHTML = options;
+    }
+
+    function calcCreditRow(k) {
+        const principal = parseFloat(document.getElementById(`crd-amount-${k}`)?.value) || 0;
+        const rate = parseFloat(document.getElementById(`crd-rate-${k}`)?.value) || 0;
+        const months = parseInt(document.getElementById(`crd-months-${k}`)?.value) || 12;
+        const status = document.getElementById(`crd-status-${k}`)?.value;
+
+        let monthlyPayment = 0;
+        if (principal > 0 && months > 0) {
+            if (rate > 0) {
+                const monthlyRate = (rate / 100) / 12;
+                monthlyPayment = (principal * monthlyRate * Math.pow(1 + monthlyRate, months)) / (Math.pow(1 + monthlyRate, months) - 1);
+            } else {
+                monthlyPayment = principal / months;
+            }
+        }
+
+        const monthlyInput = document.getElementById(`crd-monthly-${k}`);
+        if (monthlyInput && document.activeElement !== monthlyInput) {
+            monthlyInput.value = monthlyPayment.toFixed(2);
+        }
+
+        const currentMonthly = parseFloat(document.getElementById(`crd-monthly-${k}`)?.value) || monthlyPayment;
+        let remaining = principal;
+        if (status === "Ödənildi") {
+            remaining = Math.max(0, principal - currentMonthly);
+        }
+
+        const remTd = document.getElementById(`crd-remaining-${k}`);
+        if (remTd) remTd.innerText = remaining.toFixed(2) + " AZN";
+
+        recalculate();
+    }
+
+    function resetEntireDatabase() {
+        const confirmFirst = confirm("ƏMİNSİNİZ? Bütün verilənlər bazası (qəbullar, kreditlər, xərclər, optovoy) sıfırlanacaq!");
+        if (confirmFirst) {
+            const confirmSecond = prompt("Sıfırlamaq üçün 'SIFIRLA' sözünü daxil edin:");
+            if (confirmSecond === "SIFIRLA") {
+                Promise.all([
+                    db.ref('akt_1').remove(),
+                    db.ref('akt_2').remove(),
+                    db.ref('akt_3').remove()
+                ]).then(() => {
+                    alert("Bütün verilənlər bazası uğurla təmizləndi!");
+                    location.reload();
+                }).catch(err => {
+                    alert("Xəta baş verdi: " + err.message);
+                });
+            } else {
+                alert("Sıfırlama ləğv edildi.");
+            }
+        }
+    }
+
+    function checkCreditDates() {
+        const todayStr = getTodayISO();
+        if(!todayStr) return;
+        const today = new Date(todayStr);
+        let alertCount = 0;
+
+        for (let k = 1; k <= TOTAL_CREDITS; k++) {
+            const dateVal = document.getElementById(`crd-date-${k}`)?.value;
+            const status = document.getElementById(`crd-status-${k}`)?.value;
+            const row = document.getElementById(`credit-row-${k}`);
+            const alertTd = document.getElementById(`crd-alert-${k}`);
+
+            if (!row || !alertTd) continue;
+
+            row.className = "";
+            alertTd.innerHTML = "-";
+
+            if (status === "Ödənilməyib" && dateVal) {
+                const credDate = new Date(dateVal);
+                const diffDays = Math.ceil((credDate - today) / (1000 * 60 * 60 * 24));
+
+                if (diffDays < 0) {
+                    row.className = "credit-expired";
+                    alertTd.innerHTML = `<span class="badge-expired">🚨 GECİKMƏ VAR (${Math.abs(diffDays)} gün)</span>`;
+                    alertCount++;
+                } else if (diffDays <= 3) {
+                    row.className = "credit-warning";
+                    alertTd.innerHTML = `<span class="badge-warning">⚠️ VAXTA AZ QALIB (${diffDays} gün)</span>`;
+                    alertCount++;
+                } else {
+                    row.className = "credit-ok";
+                    alertTd.innerHTML = `🟢 ${diffDays} gün var`;
+                }
+            } else if (status === "Ödənildi") {
+                row.className = "credit-ok";
+                alertTd.innerHTML = "✅ Ödənildi";
+            } else {
+                row.className = "credit-ok";
+            }
+        }
+
+        const badge = document.getElementById('creditAlertBadge');
+        if (alertCount > 0) {
+            badge.style.display = 'inline-block';
+            badge.innerText = `${alertCount} KREDİT`;
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+
+    function openPassModal() {
+        document.getElementById('modal-old-pass').value = '';
+        document.getElementById('modal-new-pass').value = '';
+        document.getElementById('modal-confirm-pass').value = '';
+        document.getElementById('passModal').style.display = 'flex';
+    }
+
+    function closePassModal() {
+        document.getElementById('passModal').style.display = 'none';
+    }
+
+    function saveNewPassword() {
+        const oldP = document.getElementById('modal-old-pass').value.trim();
+        const newP = document.getElementById('modal-new-pass').value.trim();
+        const confP = document.getElementById('modal-confirm-pass').value.trim();
+
+        if (oldP !== currentAdminPassword) { alert("Cari şifrə yanlışdır!"); return; }
+        if (!newP) { alert("Yeni şifrə boş ola bilməz!"); return; }
+        if (newP !== confP) { alert("Yeni şifrələr bir-biri ilə üst-üstə düşmür!"); return; }
+
+        db.ref('system_settings/admin_password').set(newP).then(() => {
+            alert("Admin şifrəsi uğurla dəyişdirildi!");
+            currentAdminPassword = newP;
+            closePassModal();
+        }).catch(err => {
+            alert("Xəta baş verdi: " + err.message);
+        });
+    }
+
+    function submitReception() {
+        const mus = document.getElementById('rec-musteri').value.trim();
+        const tel = document.getElementById('rec-tel').value.trim();
+        const model = document.getElementById('rec-model').value.trim();
+        const sikayet = document.getElementById('rec-sikayet').value.trim();
+        const qiymet = document.getElementById('rec-qiymet').value.trim() || "0.00";
+
+        if (!mus && !model) { alert("Lütfən minimum Müştəri Adı və ya Model yazın!"); return; }
+
+        let targetRow = -1;
+        for (let i = 1; i <= currentRowCount; i++) {
+            if (!document.getElementById(`inp-musteri-${i}`).value) {
+                targetRow = i;
+                break;
+            }
+        }
+        if (targetRow === -1) {
+            addNewRepairRow();
+            targetRow = currentRowCount;
+        }
+
+        document.getElementById(`inp-tarix-${targetRow}`).value = getTodayISO();
+        document.getElementById(`inp-musteri-${targetRow}`).value = mus;
+        document.getElementById(`inp-tel-${targetRow}`).value = tel;
+        document.getElementById(`inp-model-${targetRow}`).value = model;
+        document.getElementById(`inp-sikayet-${targetRow}`).value = sikayet;
+        document.getElementById(`inp-qiymet-${targetRow}`).value = parseFloat(qiymet).toFixed(2);
+        
+        const selSt = document.getElementById(`sel-status-${targetRow}`);
+        selSt.value = "Gözləmədə";
+        updateStatusColor(selSt);
+
+        document.getElementById(`inp-isnew-${targetRow}`).value = "1";
+
+        document.getElementById('rec-musteri').value = '';
+        document.getElementById('rec-tel').value = '';
+        document.getElementById('rec-model').value = '';
+        document.getElementById('rec-sikayet').value = '';
+        document.getElementById('rec-qiymet').value = '0.00';
+
+        recalculate();
+        updateRepairClientsDatalist();
+        saveToFirebase();
+        alert(`Kompüter qəbul edildi! Sətir #${targetRow}`);
+    }
+
+    function handleStatusChange(el, rowIdx) {
+        if (el.value === 'Təhvil verildi') {
+            document.getElementById(`inp-tehvil-tarix-${rowIdx}`).value = getTodayISO();
+        }
+        updateStatusColor(el);
+    }
+
+    function updateStatusColor(el) {
+        const val = el.value;
+        const formattedVal = val.replace(/\s+/g, '-');
+        const rowId = el.id.replace('sel-status-', '');
+        const tr = document.getElementById(`row-${rowId}`);
+
+        el.className = 'auto-sync status-' + formattedVal;
+        if (tr) tr.className = 'row-status-' + formattedVal;
+    }
+
+    function updateOptStatusColor(el) {
+        const rowId = el.id.replace('opt-status-', '');
+        const tr = document.getElementById(`opt-row-${rowId}`);
+        const formattedVal = el.value.replace(/\s+/g, '-');
+        
+        el.className = 'auto-sync opt-status-' + formattedVal;
+        if (tr) tr.className = el.value === 'Ödənildi' ? 'opt-odenildi' : 'opt-odenilmeyib';
+    }
+
+    function switchRole(role) {
+        if (role === 'admin' && currentRole !== 'admin') {
+            const pass = prompt("Admin Şifrəsini daxil edin:");
+            if (pass !== currentAdminPassword) {
+                alert("Yanlış şifrə!");
+                return;
+            }
+        }
+
+        currentRole = role;
+
+        if ((role === 'reception' || role === 'master') && (currentAktId === 2 || currentAktId === 3)) {
+            switchAkt(1);
+        }
+        
+        document.getElementById('btn-role-reception').classList.toggle('active-role', role === 'reception');
+        document.getElementById('btn-role-master').classList.toggle('active-role', role === 'master');
+        document.getElementById('btn-role-admin').classList.toggle('admin-role', role === 'admin');
+        
+        document.getElementById('btnPassChange').style.display = (role === 'admin') ? 'flex' : 'none';
+        document.getElementById('btnResetDB').style.display = (role === 'admin') ? 'flex' : 'none';
+        document.getElementById('btnAutoSelect').style.display = (role === 'master' || role === 'admin') ? 'flex' : 'none';
+        document.getElementById('receptionFormBox').style.display = role === 'reception' ? 'block' : 'none';
+
+        const adminTabs = document.querySelectorAll('.admin-only-tab');
+        adminTabs.forEach(tab => {
+            tab.style.display = (role === 'admin') ? 'flex' : 'none';
+        });
+
+        const adminCards = document.querySelectorAll('.admin-only-card');
+        adminCards.forEach(card => {
+            card.style.display = (role === 'admin') ? 'block' : 'none';
+        });
+
+        const hideClasses = document.querySelectorAll('.col-xerc, .col-xalis');
+        hideClasses.forEach(el => {
+            if (role === 'reception') {
+                el.classList.add('hide-for-reception');
+            } else {
+                el.classList.remove('hide-for-reception');
+            }
+        });
+
+        document.getElementById('card-today-xerc').style.display = (role === 'reception') ? 'none' : 'block';
+        document.getElementById('card-today-net').style.display = (role === 'reception') ? 'none' : 'block';
+
+        for (let i = 1; i <= currentRowCount; i++) {
+            const islerInput = document.getElementById(`inp-isler-${i}`);
+            const xercInput = document.getElementById(`inp-xerc-${i}`);
+            const optTemir = document.getElementById(`opt-temirde-${i}`);
+            const optHazir = document.getElementById(`opt-hazirdir-${i}`);
+
+            if (islerInput) islerInput.readOnly = (role === 'reception');
+            if (xercInput) xercInput.readOnly = (role === 'reception');
+
+            if (optTemir) optTemir.disabled = (role === 'reception');
+            if (optHazir) optHazir.disabled = (role === 'reception');
+        }
+
+        updateNotificationBadge();
+        checkCreditDates();
+    }
+
+    function autoSelectWork() {
+        let found = false;
+        for (let i = 1; i <= currentRowCount; i++) {
+            const st = document.getElementById(`sel-status-${i}`)?.value;
+            const mus = document.getElementById(`inp-musteri-${i}`)?.value;
+            if (st === "Gözləmədə" && mus) {
+                const sel = document.getElementById(`sel-status-${i}`);
+                sel.value = "Təmirdə";
+                updateStatusColor(sel);
+                markAsRead(i);
+                
+                const tr = document.getElementById(`row-${i}`);
+                if (tr) tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                document.getElementById(`inp-isler-${i}`)?.focus();
+                alert(`Növbəti iş götürüldü: ${mus}`);
+                found = true;
+                break;
+            }
+        }
+        if (!found) alert("Gözləmədə olan iş yoxdur!");
+    }
+
+    function markAsRead(rowIdx) {
+        const isNewEl = document.getElementById(`inp-isnew-${rowIdx}`);
+        if (isNewEl && isNewEl.value === "1") {
+            isNewEl.value = "0";
+            const tr = document.getElementById(`row-${rowIdx}`);
+            if (tr) tr.classList.remove('new-device-row');
+            updateNotificationBadge();
+            saveToFirebase();
+        }
+    }
+
+    function updateNotificationBadge() {
+        let newCount = 0;
+        for (let i = 1; i <= currentRowCount; i++) {
+            const isNew = document.getElementById(`inp-isnew-${i}`)?.value;
+            if (isNew === "1") newCount++;
+        }
+        const badge = document.getElementById('notifBadge');
+        if (newCount > 0) {
+            badge.style.display = 'inline-block';
+            badge.innerText = `${newCount} YENİ`;
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+
+    function recalculate() {
+        const today = getTodayISO();
+        let todayGelir = 0;
+        let totalMainGelir = 0;
+
+        for (let i = 1; i <= currentRowCount; i++) {
+            const st = document.getElementById(`sel-status-${i}`)?.value;
+            const q = parseFloat(document.getElementById(`inp-qiymet-${i}`)?.value) || 0;
+            const x = parseFloat(document.getElementById(`inp-xerc-${i}`)?.value) || 0;
+            const tehvilTarix = document.getElementById(`inp-tehvil-tarix-${i}`)?.value;
+
+            let netProfit = (st === "Hazırdır" || st === "Təhvil verildi") ? (q - x) : 0;
+            document.getElementById(`row-netice-${i}`).innerText = netProfit.toFixed(2);
+
+            if (st === "Hazırdır" || st === "Təhvil verildi") {
+                totalMainGelir += netProfit;
+                if (tehvilTarix === today) {
+                    todayGelir += netProfit;
+                }
+            }
+        }
+
+        let todayXerc = 0;
+        let totalMainXerc = 0;
+
+        for (let m = 1; m <= TOTAL_EXPENSES; m++) {
+            const expVal = parseFloat(document.getElementById(`s2-exp-megleg-${m}`)?.value) || 0;
+            const expDate = document.getElementById(`s2-exp-tarix-${m}`)?.value;
+            totalMainXerc += expVal;
+            if (expDate === today) todayXerc += expVal;
+        }
+
+        let totalOptPaid = 0;
+        let totalOptDebt = 0;
+        const supplierMap = {};
+
+        for (let p = 1; p <= currentOptRowCount; p++) {
+            const seller = document.getElementById(`opt-seller-${p}`)?.value.trim() || "Naməlum Satıcı";
+            const st = document.getElementById(`opt-status-${p}`)?.value;
+            const qty = parseFloat(document.getElementById(`opt-qty-${p}`)?.value) || 0;
+            const price = parseFloat(document.getElementById(`opt-price-${p}`)?.value) || 0;
+            const optDate = document.getElementById(`opt-tarix-${p}`)?.value;
+            const sum = qty * price;
+
+            if (sum > 0) {
+                if (!supplierMap[seller]) {
+                    supplierMap[seller] = { paid: 0, debt: 0 };
+                }
+
+                if (st === "Ödənildi") {
+                    totalOptPaid += sum;
+                    supplierMap[seller].paid += sum;
+                    totalMainXerc += sum;
+                    if (optDate === today) todayXerc += sum;
+                } else {
+                    totalOptDebt += sum;
+                    supplierMap[seller].debt += sum;
+                }
+            }
+        }
+
+        let supplierHTML = '';
+        let hasData = false;
+        Object.keys(supplierMap).forEach(seller => {
+            if (seller !== "Naməlum Satıcı" || supplierMap[seller].paid > 0 || supplierMap[seller].debt > 0) {
+                hasData = true;
+                supplierHTML += `<tr>
+                    <td style="font-weight:bold;">${seller}</td>
+                    <td style="color:#059669; font-weight:bold;">${supplierMap[seller].paid.toFixed(2)} AZN</td>
+                    <td style="color:#d97706; font-weight:bold;">${supplierMap[seller].debt.toFixed(2)} AZN</td>
+                </tr>`;
+            }
+        });
+
+        if (!hasData) {
+            supplierHTML = '<tr><td colspan="3" style="color:#64748b;">Məlumat yoxdur</td></tr>';
+        }
+        document.getElementById('supplierDebtTableBody').innerHTML = supplierHTML;
+
+        let totalCreditRemaining = 0;
+        let totalCreditMonthly = 0;
+
+        for (let k = 1; k <= TOTAL_CREDITS; k++) {
+            const principal = parseFloat(document.getElementById(`crd-amount-${k}`)?.value) || 0;
+            const monthly = parseFloat(document.getElementById(`crd-monthly-${k}`)?.value) || 0;
+            const st = document.getElementById(`crd-status-${k}`)?.value;
+
+            if (principal > 0) {
+                totalCreditMonthly += monthly;
+                if (st === "Ödənildi") {
+                    totalCreditRemaining += Math.max(0, principal - monthly);
+                } else {
+                    totalCreditRemaining += principal;
+                }
+            }
+        }
+
+        document.getElementById('credit-total-remaining').innerText = totalCreditRemaining.toFixed(2) + " AZN";
+        document.getElementById('credit-monthly-total').innerText = totalCreditMonthly.toFixed(2) + " AZN";
+
+        document.getElementById('dash-today-gelir').innerText = todayGelir.toFixed(2) + " AZN";
+        document.getElementById('dash-today-xerc').innerText = todayXerc.toFixed(2) + " AZN";
+        document.getElementById('dash-today-net').innerText = (todayGelir - todayXerc).toFixed(2) + " AZN";
+
+        document.getElementById('dash-optovoy-paid').innerText = totalOptPaid.toFixed(2) + " AZN";
+        document.getElementById('dash-optovoy-debt').innerText = totalOptDebt.toFixed(2) + " AZN";
+
+        document.getElementById('dash-total-main-kassa').innerText = (totalMainGelir - totalMainXerc).toFixed(2) + " AZN";
+    }
+
+    function calcOptRow(p) {
+        const qty = parseFloat(document.getElementById(`opt-qty-${p}`)?.value) || 0;
+        const price = parseFloat(document.getElementById(`opt-price-${p}`)?.value) || 0;
+        document.getElementById(`opt-total-${p}`).innerText = (qty * price).toFixed(2);
+        updateOptovoyDatalist();
+        recalculate();
+    }
+
+    function addNewRepairRow() {
+        currentRowCount++;
+        document.getElementById('tableBody').insertAdjacentHTML('beforeend', createRepairRowHTML(currentRowCount));
+        switchRole(currentRole);
+        recalculate();
+        updateRepairClientsDatalist();
+        saveToFirebase();
+    }
+
+    function addNewOptovoyRow() {
+        currentOptRowCount++;
+        document.getElementById('optovoyTableBody').insertAdjacentHTML('beforeend', createOptovoyRowHTML(currentOptRowCount));
+        recalculate();
+        saveToFirebase();
+    }
+
+    function switchAkt(id) {
+        if ((id === 2 || id === 3) && currentRole !== 'admin') {
+            alert("Bu bölməyə keçid etmək üçün Admin rejiminə daxil olmalısınız!");
+            return;
+        }
+
+        currentAktId = id;
+        for(let i=1; i<=3; i++) {
+            const tabWrapper = document.getElementById(`tab-wrapper-${i}`);
+            if (tabWrapper) tabWrapper.classList.toggle('active', i === id);
+        }
+        document.getElementById('repairSection').style.display = id === 1 ? 'block' : 'none';
+        document.getElementById('personalAndCreditSection').style.display = id === 2 ? 'block' : 'none';
+        document.getElementById('optovoySection').style.display = id === 3 ? 'block' : 'none';
+        listenToFirebase();
+    }
+
+    function filterRows() {
+        const query = document.getElementById('searchInput').value.toLowerCase().trim();
+        for (let i = 1; i <= currentRowCount; i++) {
+            const tr = document.getElementById(`row-${i}`);
+            if (!tr) continue;
+            const mus = document.getElementById(`inp-musteri-${i}`)?.value.toLowerCase() || '';
+            const tel = document.getElementById(`inp-tel-${i}`)?.value.toLowerCase() || '';
+            const mod = document.getElementById(`inp-model-${i}`)?.value.toLowerCase() || '';
+            tr.style.display = (mus.includes(query) || tel.includes(query) || mod.includes(query)) ? '' : 'none';
+        }
+    }
+
+    function saveToFirebase() {
+        const data = {};
+        document.querySelectorAll('.auto-sync').forEach(el => { if(el.id) data[el.id] = el.value; });
+        db.ref('akt_' + currentAktId).set(data);
+    }
+
+    function listenToFirebase() {
+        db.ref('akt_' + currentAktId).on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                Object.keys(data).forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el && el !== document.activeElement) {
+                        el.value = data[id];
+                        if (id.startsWith('sel-status-')) updateStatusColor(el);
+                        if (id.startsWith('opt-status-')) updateOptStatusColor(el);
+                    }
+                });
+                switchRole(currentRole);
+                for (let k = 1; k <= TOTAL_CREDITS; k++) calcCreditRow(k);
+                recalculate();
+                updateNotificationBadge();
+                checkCreditDates();
+                updateOptovoyDatalist();
+                updateRepairClientsDatalist();
+            }
+        });
+    }
+
+    window.onload = function() {
+        buildTables();
+        switchRole('reception');
+        switchAkt(1);
+
+        document.querySelector('.container').addEventListener('input', () => {
+            recalculate();
+            checkCreditDates();
+            saveToFirebase();
+        });
+    }
+</script>
+</body>
+</html>
